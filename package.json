@@ -1,0 +1,17 @@
+{
+  "name": "moemachine",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^1.0.0",
+    "node-getopt": "^0.2.3",
+    "transmission": "^0.4.2",
+    "xml2js": "^0.4.8"
+  }
+}
