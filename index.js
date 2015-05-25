@@ -3,21 +3,27 @@
 var opt = require('node-getopt').create([
   ['p' , 'port=9091' , 'Port where transmission is running at'],
   ['H' , 'host=127.0.0.1' , 'Host where transmission is running at'],
+  ['a' , 'auth=', 'Authenitcation string for transission given in user:pass']
   ['t' , 'type=', 'Only accept results from a cetrain type (batch or eps)'],
   ['b' , 'best' , 'Skip manual pick and do what\'s best for me'],
   ['q' , 'qaulity=', 'Only accept results from certain qaulity'],
   ['g' , 'group=', 'Only accept results from certain group'],
   ['P' , 'path=', 'Path to save downloaded files at (for eps it will be downloaded in a folder with the title as name)'],
-  ['h' , 'help', 'Display this help']
+  ['h' , 'help', 'Display this help'],
+  ['s' , 'strict', 'Only strict matches are used'],
+  ['S' , 'scores', 'Show scores with explaination'],
+  ['c' , 'config=', 'Load config from alternative path (default is ~/.moemachine)']
 ])              
 .bindHelp()
 .setHelp("Usage: moemachine [TITLE] [OPTION]\n[[OPTIONS]]");
+
 
 var Transmission = require('transmission'),
     search = require('./search.js'),
     async = require('async'),
     readline = require('readline'),
-    fs = require('fs');
+    fs = require('fs'),
+    tests = require('./tests.js');
 
 var title = process.argv[2];
 
@@ -30,6 +36,7 @@ if (title == '-h' || title == '--help') {
     console.log(opt.getHelp());
     process.exit(0);
 }
+
 opt = opt.parse(process.argv.slice(3));
 
 var defaultConfig = require('./config.json');
@@ -41,17 +48,32 @@ var argumentConfig = {
 };
 var config = {};
 
-var userConfigPath = joinPath(getUserHome(), '.moemachine');
+var userConfigPath = opt.options.config?opt.options.config:joinPath(getUserHome(), '.moemachine');
 try {
     var userConfigData = fs.readFileSync(userConfigPath, { 'encoding':'utf-8' })
     userConfig = JSON.parse(userConfigData)||{};
 } catch(e) {
+    if (opt.options.config) {
+        console.log('failed loading config: '+e.message);
+        process.exit(1);
+    }
 }
 
 config = mergeObjects([defaultConfig, userConfig, argumentConfig]);
 
+if (title == '-S' || title == '--scores' || opt.options.scores) {
+    showScores();
+    process.exit(0);
+}
+
+if (opt.options.strict === true) {
+    console.log('Using strict search');
+}
+
 console.log("Searching for: " + title);
-search(title, {}, function(error, results){
+search(title, {
+    strict: opt.options.strict === true
+}, function(error, results){
     if (error) {
         console.log('Fatal: '+error.message);
         process.exit(1);
@@ -164,10 +186,18 @@ function download(result)
 {
     var meta = result.meta;
     console.log('Queuing: '+getName(result));
-    var transmission = new Transmission({
+    var transmissionConfig = {
         port : config.port,
         host : config.host
-    });
+    }
+
+    if (config.auth) {
+        var auth = (""+config.auth).split(':', 2);
+        transmissionConfig.username = auth[0];
+        transmissionConfig.password = auth[1];
+    }
+
+    var transmission = new Transmission(transmissionConfig);
     var options = {}
     if (opt.options.path) {
         options['download-dir'] = joinPath(config.path, meta.type!=='batch'?'['+meta.group+'] ' + meta.title + '/' : '');
@@ -207,51 +237,6 @@ function joinPath(partA, partB) {
         partB = partB.substring(1);
     }
     return partA + partB;
-}
-
-var tests = {
-    "IS_DEAD":{
-        "description":"Hits when there are no seeds",
-        "test": function(result) {
-            return result.info.seeds === 0;
-        }
-    },
-    "IS_DYING":{
-        "description":"Hits when there are less then 3 seeds",
-        "test" : function(result) {
-            return result.info.seeds < 3;
-        }
-    },
-    "ENOUGH_SEEDS":{
-        "description":"When there are more then 10 seeds",
-        "test": function(result) {
-            return result.info.seeds > 10;
-        }
-    },
-    "IS_FAMOUS":{
-        "description":"When there are more then 30 seeds",
-        "test": function(result) {
-            return result.info.seeds > 30;
-        }
-    },
-    "SEEMS_UNSTABLE":{
-        "description":"When there are less then 6 seeds but double the leechers",
-        "test": function(result){
-            return result.info.seeds > 0 && result.info.seeds < 6 && (result.info.seeds * 2) < result.info.leechers;
-        }
-    },
-    "LOW_QAULITY":{
-        "description":"When the result has a qaulity lower then 720",
-        "test": function(result){
-            return result.meta.qaulity < 720;
-        }
-    },
-    "HIGH_QAULITY":{
-        "description":"When the result has a qaulity higher then 720",
-        "test":function(result) {
-            return result.meta.qaulity > 720
-        }
-    }
 }
 
 function createScore(result)
@@ -294,4 +279,14 @@ function mergeObjects(objs)
         };
     };
     return result;
+}
+
+function showScores()
+{
+    var testKeys = Object.keys(tests);
+    console.log('Loaded score tests:')
+    for (var i = testKeys.length - 1; i >= 0; i--) {
+        var key = testKeys[i];
+        console.log(key + '['+config.scores[key]+']: ' + tests[key].description)
+    };
 }

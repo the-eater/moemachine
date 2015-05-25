@@ -21,6 +21,7 @@ module.exports = function(title, options, callback){
         query: item.series_title.trim(),
         user: 64513
     },{
+        // Coalgirls
         category: 'English-translated Anime',
         query: item.series_title.trim(),
         user: 62260
