@@ -6,7 +6,7 @@ Download anime with ease.
 
 Install moemachine
 ```
-npm -g https://github.com/EaterOfCode/moemachine
+npm i -g https://github.com/EaterOfCode/moemachine
 ```
 
 Then run moemachine with the title

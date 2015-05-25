@@ -3,7 +3,7 @@
 var opt = require('node-getopt').create([
   ['p' , 'port=9091' , 'Port where transmission is running at'],
   ['H' , 'host=127.0.0.1' , 'Host where transmission is running at'],
-  ['a' , 'auth=', 'Authenitcation string for transission given in user:pass']
+  ['a' , 'auth=', 'Authenitcation string for transission given in user:pass'],
   ['t' , 'type=', 'Only accept results from a cetrain type (batch or eps)'],
   ['b' , 'best' , 'Skip manual pick and do what\'s best for me'],
   ['q' , 'qaulity=', 'Only accept results from certain qaulity'],
