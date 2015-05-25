@@ -1,0 +1,14 @@
+{
+	"port":9091,
+	"host":"localhost",
+	"path": false,
+	"scores":{
+		"IS_DEAD": -10,
+		"IS_DYING": -1,
+		"ENOUGH_SEEDS": 1,
+		"IS_FAMOUS": 2,
+		"SEEMS_UNSTABLE": -1,
+		"LOW_QAULITY":-1,
+		"HIGH_QAULITY": 1
+	}
+}

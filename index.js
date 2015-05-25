@@ -1,30 +1,57 @@
-opt = require('node-getopt').create([
+#!/bin/env node
+
+var opt = require('node-getopt').create([
   ['p' , 'port=9091' , 'Port where transmission is running at'],
-  ['H' ,'host=127.0.0.1' , 'Host where transmission is running at'],
-  ['t' , 'title=', 'Title of the anime to download'],
-  ['T' , 'type=', 'Only accept results from a cetrain type (batch or eps)'],
+  ['H' , 'host=127.0.0.1' , 'Host where transmission is running at'],
+  ['t' , 'type=', 'Only accept results from a cetrain type (batch or eps)'],
   ['b' , 'best' , 'Skip manual pick and do what\'s best for me'],
   ['q' , 'qaulity=', 'Only accept results from certain qaulity'],
   ['g' , 'group=', 'Only accept results from certain group'],
   ['P' , 'path=', 'Path to save downloaded files at (for eps it will be downloaded in a folder with the title as name)'],
   ['h' , 'help', 'Display this help']
 ])              
-.bindHelp()     
-.parseSystem();
+.bindHelp()
+.setHelp("Usage: moemachine [TITLE] [OPTION]\n[[OPTIONS]]");
 
 var Transmission = require('transmission'),
     search = require('./search.js'),
     async = require('async'),
-    readline = require('readline');
+    readline = require('readline'),
+    fs = require('fs');
 
-var title = opt.options.title;
+var title = process.argv[2];
 
 if (!title) {
     console.log('No valid title given');
     process.exit(1);
 }
+
+if (title == '-h' || title == '--help') {
+    console.log(opt.getHelp());
+    process.exit(0);
+}
+opt = opt.parse(process.argv.slice(3));
+
+var defaultConfig = require('./config.json');
+var userConfig = {};
+var argumentConfig = {
+    host: opt.options.host,
+    port: opt.options.port,
+    path: opt.options.path
+};
+var config = {};
+
+var userConfigPath = joinPath(getUserHome(), '.moemachine');
+try {
+    var userConfigData = fs.readFileSync(userConfigPath, { 'encoding':'utf-8' })
+    userConfig = JSON.parse(userConfigData)||{};
+} catch(e) {
+}
+
+config = mergeObjects([defaultConfig, userConfig, argumentConfig]);
+
 console.log("Searching for: " + title);
-search(title, function(error, results){
+search(title, {}, function(error, results){
     if (error) {
         console.log('Fatal: '+error.message);
         process.exit(1);
@@ -68,17 +95,28 @@ search(title, function(error, results){
         process.exit(1);
     }
 
+    results.forEach(function(a){
+        a.score = createScore(a);
+    });
+
+    results.sort(function(a,b){
+        return a.score.amount < b.score.amount ? 1 : a.score.amount > b.score.amount ? -1 : 0;
+    });
+
+
     if (opt.options.best) {
         console.log('got --best skipping prompt and picking best.');
-        bestPick(results);
+        download(results[0]);
         return;
     }
 
     console.log('Found: ');
+    console.log('');
     results.forEach(function(item, index){
-        var meta = item.meta;
-        console.log('[' + (index + 1) + '][' + meta.group + ']['+meta.type+']['+meta.qaulity+']['+meta.container+'] '+meta.title);
+        //console.log(item);
+        console.log("  " + (index + 1) + "\t"+getName(item));
     });
+    console.log('');
 
     var rl = readline.createInterface({
       input: process.stdin,
@@ -99,7 +137,7 @@ search(title, function(error, results){
 
             if (answer == 'b') {
                 rl.close();
-                bestPick(results);
+                download(results[0]);
                 return;
             }
             
@@ -107,7 +145,7 @@ search(title, function(error, results){
                 rl.close();
                 download(results[parseInt(answer)-1]);
                 return;
-            }
+            } 
 
             console.log('Invalid input');
             askWhich();
@@ -116,49 +154,26 @@ search(title, function(error, results){
 });
 
 
-function bestPick(results)
+function getName(result)
 {
-    console.log('Picking best from '+results.length + ' result(s)');
-    if (results.length == 1) {
-        download(results[0]);
-        return;
-    }
-
-    var best = false;
-    results.forEach(function(result){
-        if (best == false) {
-            best = result;
-            return;
-        }
-
-        if (best.meta.qaulity < result.meta.qaulity) {
-            best = result;
-            return;
-        }
-
-        if (best.meta.type == 'ep' && result.meta.type == "batch") {
-            best = result;
-            return;
-        }
-    });
-
-    download(best);
+    var meta = result.meta;
+    return '[' + meta.group + ']['+meta.type+(meta.type=='ep'?' '+Object.keys(result.eps).length:'')+']['+meta.qaulity+']['+meta.container+'] "'+meta.title+'" Score: '+result.score.amount + ' (' + result.score.hits.join(', ') + ')';
 }
 
 function download(result)
 {
     var meta = result.meta;
-    console.log('Queuing: [' + meta.group + ']['+meta.type+']['+meta.qaulity+']['+meta.container+'] '+meta.title)
+    console.log('Queuing: '+getName(result));
     var transmission = new Transmission({
-        port : opt.options.port||9091,
-        host : opt.options.host||"localhost"
+        port : config.port,
+        host : config.host
     });
     var options = {}
     if (opt.options.path) {
-        options['download-dir'] = joinPath(opt.options.path, meta.type=='ep'?'['+meta.group+'] ' + meta.title + '/' : '');
+        options['download-dir'] = joinPath(config.path, meta.type!=='batch'?'['+meta.group+'] ' + meta.title + '/' : '');
     }
 
-    if (meta.type == "batch") {
+    if (meta.type !== "ep") {
         transmission.addUrl(result.link, options, function(err){
             if (err) {
                 console.log('Fatal: '+err.message);
@@ -192,4 +207,91 @@ function joinPath(partA, partB) {
         partB = partB.substring(1);
     }
     return partA + partB;
+}
+
+var tests = {
+    "IS_DEAD":{
+        "description":"Hits when there are no seeds",
+        "test": function(result) {
+            return result.info.seeds === 0;
+        }
+    },
+    "IS_DYING":{
+        "description":"Hits when there are less then 3 seeds",
+        "test" : function(result) {
+            return result.info.seeds < 3;
+        }
+    },
+    "ENOUGH_SEEDS":{
+        "description":"When there are more then 10 seeds",
+        "test": function(result) {
+            return result.info.seeds > 10;
+        }
+    },
+    "IS_FAMOUS":{
+        "description":"When there are more then 30 seeds",
+        "test": function(result) {
+            return result.info.seeds > 30;
+        }
+    },
+    "SEEMS_UNSTABLE":{
+        "description":"When there are less then 6 seeds but double the leechers",
+        "test": function(result){
+            return result.info.seeds > 0 && result.info.seeds < 6 && (result.info.seeds * 2) < result.info.leechers;
+        }
+    },
+    "LOW_QAULITY":{
+        "description":"When the result has a qaulity lower then 720",
+        "test": function(result){
+            return result.meta.qaulity < 720;
+        }
+    },
+    "HIGH_QAULITY":{
+        "description":"When the result has a qaulity higher then 720",
+        "test":function(result) {
+            return result.meta.qaulity > 720
+        }
+    }
+}
+
+function createScore(result)
+{
+    var score = {
+        amount:0,
+        hits:[]
+    };
+
+    var testKeys = Object.keys(tests);
+    for (var i = testKeys.length - 1; i >= 0; i--) {
+        var key = testKeys[i];
+        if (tests[key].test(result)) {
+            score.amount += config.scores[key];
+            score.hits.push(key);
+        }
+    };
+
+    return score;
+}
+
+function getUserHome() {
+  return process.env.HOME || process.env.USERPROFILE;
+}
+
+function mergeObjects(objs)
+{
+    var result = {};
+    for (var i = 0; i < objs.length; i++) {
+        var keys = Object.keys(objs[i]);
+        for (var j = 0; j < keys.length; j++) {
+            var key = keys[j];
+            if (objs[i][key] !== undefined) {
+                if (typeof(result[key]) === 'object') {
+                    result[key] = mergeObjects([result[key], objs[i][key]]);
+                } else {
+                    result[key] = objs[i][key];
+                }
+            }
+        };
+    };
+    return result;
 }

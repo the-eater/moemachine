@@ -77,7 +77,7 @@ Nyaa.animeGroups = {
 				while(item = itemreg.exec(match[4])){
 					var key = Nyaa.solveIndicator(item[1]);
 					if(key == "qaulity"){
-						data[key] = parseInt(item[1].match(/^([0-9]+)[xp]?/)[1]);
+						data[key] = parseInt(item[1].match(/^[x]?([0-9]+)[p]?/)[1]);
 					}else{
 						data[key] = item[1];
 					}
@@ -124,10 +124,45 @@ Nyaa.animeGroups = {
 			if(match[2]){
 				data.type = "ep";
 				data.ep = parseInt(match[2]);
+			} else {
+				data.type = "batch";
 			}
 			if(match[1]){
 				data.title = match[1];
 			}
+			return data;
+		}
+		return false;
+	},
+	'coalgirls': function(title)
+	{
+		// [Coalgirls]_Evangelion_2.22_You_Can_(Not)_Advance_(1280x720_Blu-ray_FLAC)_[12DF18F3].mkv
+		var pattern = /^\[Coalgirls\]_(.+)_([0-9]+-[0-9]+_)?\([0-9]+x([0-9]+)_([^_]+)_([^_]+)\)(?:_\[[A-F0-9]{8}\])?(?:\.([a-z]+))?$/i;
+		var match;
+		if(match = title.match(pattern)){
+			var data = {
+				group:'Coalgirls'
+			};
+
+			if (match[6]) {
+				data.container = match[6];
+			}
+
+			if (match[3]) {
+				data.qaulity = parseInt(match[3]);
+			}
+
+			if (match[2]) {
+				data.type = "ep";
+				data.ep = match[2];
+			} else {
+				data.type = "batch";
+			}
+
+			if (match[1]) {
+				data.title = match[1].replace(/_+/g,' ');
+			}
+
 			return data;
 		}
 		return false;
