@@ -199,7 +199,7 @@ function download(result)
 
     var transmission = new Transmission(transmissionConfig);
     var options = {}
-    if (opt.options.path) {
+    if (config.path) {
         options['download-dir'] = joinPath(config.path, meta.type!=='batch'?'['+meta.group+'] ' + meta.title + '/' : '');
     }
 
