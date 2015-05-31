@@ -25,6 +25,11 @@ module.exports = function(title, options, callback){
         category: 'English-translated Anime',
         query: item.series_title.trim(),
         user: 62260
+    },{
+        // Cthuko
+        category: 'English-translated Anime',
+        query: item.series_title.trim(),
+        user: 227226
     }], function(query , next){
         nyaa.search(query, function(err, data){
             if (err) {

@@ -166,8 +166,43 @@ Nyaa.animeGroups = {
 			return data;
 		}
 		return false;
+	},
+	'cth(uko|une)': function (title)
+	{
+		// [Cthune] Rolling Girls - 09 [720p H264 AAC][EBDE8F5B].mkv
+		var pattern = /\[([a-z]+)\] ((?:(?! - [0-9]+).)+) (?:- ([0-9]+)(?:v([0-9]+))? )?\[(?:[A-Z]+ )?([0-9]+)p [^\]]+\](?:\[[A-F0-9]{8}\].([a-z]+))?/i;
+		var match;
+		if(match = title.match(pattern)){
+			var data = {
+				group:match[1],
+				type:'ep'
+			};
+
+			data.title = match[2];
+			if (match[3]) {
+				data.ep = match[3];
+				if (match[4]) {
+					data.version = match[4];
+				}
+			} else {
+				data.type = "batch";
+			}
+			data.qaulity = parseInt(match[5]);
+
+			if (match[6]) {
+				data.container = match[6];
+			}
+			
+			return data;
+		}
+
+		return false;
 	}
 }
+
+Nyaa.animeGroupsKeys = Object.keys(Nyaa.animeGroups).map(function(name){
+	return new RegExp(name, 'i');
+});
 
 Nyaa.solveInfo = function(info){
 	var number = /[0-9]+(\.[0-9])?/ig,
@@ -183,11 +218,16 @@ Nyaa.solveInfo = function(info){
 
 Nyaa.solveAnime = function(title){ 
 	var group = /^\s*\[([^\]]+)\]/;
-	var match; 
+	var match;
 	if(match = title.match(group)){
-		if(Nyaa.animeGroups[match[1].toLowerCase()]){
-			return Nyaa.animeGroups[match[1].toLowerCase()](title.trim());
-		}
+		for (var i = Nyaa.animeGroupsKeys.length - 1; i >= 0; i--) {
+			if(Nyaa.animeGroupsKeys[i].test(match[1])) {
+				var result = Nyaa.animeGroups[Nyaa.animeGroupsKeys[i].source](title);
+				if (result) {
+					return result;
+				}
+			}
+		};
 	}
 	return false;
 };
