@@ -12,13 +12,16 @@ var opt = require('node-getopt').create([
   ['h' , 'help', 'Display this help'],
   ['s' , 'strict', 'Only strict matches are used'],
   ['S' , 'scores', 'Show scores with explaination'],
-  ['c' , 'config=', 'Load config from alternative path (default is ~/.moemachine)']
+  ['c' , 'config=', 'Load config from alternative path (default is ~/.moemachine)'],
+  ['T' , 'tracker=+', 'Add several trackers to the given torrent']
 ])              
 .bindHelp()
 .setHelp("Usage: moemachine [TITLE] [OPTION]\n[[OPTIONS]]");
 
 
 var Transmission = require('transmission'),
+    http = require('http'),
+    bencode = require('bencode'),
     search = require('./search.js'),
     async = require('async'),
     readline = require('readline'),
@@ -44,7 +47,8 @@ var userConfig = {};
 var argumentConfig = {
     host: opt.options.host,
     port: opt.options.port,
-    path: opt.options.path
+    path: opt.options.path,
+    tracker: opt.options.tracker
 };
 var config = {};
 
@@ -204,24 +208,12 @@ function download(result)
     }
 
     if (meta.type !== "ep") {
-        transmission.addUrl(result.link, options, function(err){
-            if (err) {
-                console.log('Fatal: '+err.message);
-                process.exit(1);
-            }
-
+        doTorrent(result.link, transmission, options, function(){
             console.log('Added torrent to transmission.');
         });
     } else {
         async.forEachOf(result.eps, function(val, key, next){
-            transmission.addUrl(val.link, options, function(err){
-                if (err) {
-                    console.log('Fatal: '+err.message);
-                    process.exit(1);
-                }
-
-                next();
-            });
+            doTorrent(val.link, transmission, options, next);
         }, function(){
             console.log('Added torrents to transmission.'); 
         });
@@ -237,6 +229,25 @@ function joinPath(partA, partB) {
         partB = partB.substring(1);
     }
     return partA + partB;
+}
+
+function doTorrent(url, transmission, options, callback)
+{
+    get(url, function(err, data){
+        if (err) {
+            console.log('Fatal: '+err.message);
+            process.exit(1);
+        }
+        var newTorrent = addTrackers(data);
+
+        transmission.addBase64(newTorrent.toString('base64'), options, function(){
+            if (err) {
+                console.log('Fatal: '+err.message);
+                process.exit(1);
+            }
+            callback();
+        })
+    });
 }
 
 function createScore(result)
@@ -289,4 +300,32 @@ function showScores()
         var key = testKeys[i];
         console.log(key + '['+config.scores[key]+']: ' + tests[key].description)
     };
+}
+
+function get(url, cb) {
+    http.get(url, function(resp) {
+        var bufferddata = new Buffer([]);
+        resp.on('data', function(data){
+            bufferddata = Buffer.concat([bufferddata, data]);
+        });
+        resp.on('end', function(){
+            cb(null, bufferddata);
+        });
+    }).on('error', function(err){
+        cb(err);
+    });
+}
+
+function addTrackers(torrent) {
+    var t = bencode.decode(torrent);
+    var currentAnnounceList = t["announce-list"]||[];
+    if (config.tracker) {
+        if (t.announce) {
+            currentAnnounceList.push([t.announce]);
+            delete(t.announce);
+        }
+        t["announce-list"] = currentAnnounceList.concat(config.tracker.map(function(tracker){ return [tracker] }));
+    }
+    
+    return bencode.encode(t);
 }

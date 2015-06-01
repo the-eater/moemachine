@@ -10,5 +10,6 @@
 		"SEEMS_UNSTABLE": -1,
 		"LOW_QAULITY":-1,
 		"HIGH_QAULITY": 1
-	}
+	},
+	"tracker":["udp://moemachine.tv:6969/"]
 }

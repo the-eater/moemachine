@@ -36,6 +36,7 @@ After having selected one it will be added to your transmission client.
 | s     | strict         | Only strict matches are used (recommend for full automated adding)                          |
 | S     | scores         | Show scores with explaination                          |
 | c     | config         | Load config from alternative path (default is ~/.moemachine) |
+| T     | tracker        | Add several trackers to the given torrent              |
 
 ## Config
 
