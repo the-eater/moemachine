@@ -65,5 +65,8 @@ On default the config is gracefully loaded from `~/.moemachine`
 - HorribleSubs
 - DeadFish
 - Coalgirls
+- Commie
+- Cthune
+- Cthuko
 
 If you want one added, please create an issue with a link to the nyaa.se user
