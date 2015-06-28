@@ -197,6 +197,30 @@ Nyaa.animeGroups = {
 		}
 
 		return false;
+	},
+	'Commie': function (title) {
+		// [Commie] Plastic Memories - 11 [EDEAFAC2].mkv
+		var pattern = /\[Commie\] (.+) - ([0-9]+)(v[0-9]+)? \[[A-F0-9]+\]\.([a-z]+)/i;
+		var match;
+		if (match = title.match(pattern)) {
+			var data = {
+				group: 'Commie',
+				type: 'ep',
+				qaulity: 'Unknown'
+			};
+
+			data.title = match[1];
+			data.ep = match[2];
+			if (match[3]) {
+				data.version = match[3];
+			}
+
+			data.container = match[4];
+
+			return data;
+		}
+
+		return false;
 	}
 }
 

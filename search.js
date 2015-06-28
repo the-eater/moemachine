@@ -30,6 +30,11 @@ module.exports = function(title, options, callback){
         category: 'English-translated Anime',
         query: item.series_title.trim(),
         user: 227226
+    },{
+        // Commie
+        category: 'English-translated Anime',
+        query: item.series_title.trim(),
+        user: 76430
     }], function(query , next){
         nyaa.search(query, function(err, data){
             if (err) {
