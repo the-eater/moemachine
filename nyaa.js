@@ -1,4 +1,4 @@
-var http = require('http');
+var http = require('https');
 var parseString = require('xml2js').parseString;
 var Nyaa = module.exports = {};
 
@@ -6,7 +6,7 @@ Nyaa.categories = {
     "All": "0_0",
     "Anime": "1_0",
     "Anime Music Video": "1_32",
-    "English-translated Anime": "1_37",
+    "English-translated Anime": "3_5",
     "Non-English-translated Anime": "1_38",
     "Raw Anime": "1_11",
     "Audio": "3_0",
@@ -275,12 +275,15 @@ Nyaa.search = function(query, maxPages, cb){
 	doRequest(1);
 
 	function doRequest(offset) {
+		var url = 'https://nyaa.pantsu.cat/feed/' + offset + '?max=300&c=' + encodeURIComponent(query.category) +
+			"&s=" + query.filter +
+			'&q=' + encodeURIComponent(query.query||"") +
+			(query.user?'&userID=' + encodeURIComponent(query.user):'');
+
+		console.log(url);
+
 		var req = http.get(
-			'http://www.nyaa.se/?page=rss&cats=' + encodeURIComponent(query.category) +
-			"&filter=" + query.filter +
-			'&term=' + encodeURIComponent(query.query||"") +
-			(query.user?'&user=' + encodeURIComponent(query.user):'') +
-			'&offset=' + offset,
+			url,
 			function(resp){
 			var xml = "";
 			resp.on('data', function(data){
@@ -289,12 +292,12 @@ Nyaa.search = function(query, maxPages, cb){
 			resp.on('end', function(){
 				parseString(xml, function (err, result) {
 
+				console.log(result);
 	    			var item = result.rss.channel[0].item||[];
 
 		    		items = items.concat(item.map(function(a){
 		    			return {
 		    				title:a.title[0],
-		    				category:a.category[0],
 		    				info: Nyaa.solveInfo(a.description[0]),
 		    				guid: a.guid[0],
 		    				link:a.link[0],

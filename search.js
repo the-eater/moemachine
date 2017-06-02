@@ -14,27 +14,6 @@ module.exports = function(title, options, callback){
         // DeadFish
         category:'English-translated Anime',
         query: item.series_title.trim(),
-        user: 169660
-    },{
-        // HorribleSubs
-        category:'English-translated Anime',
-        query: item.series_title.trim(),
-        user: 64513
-    },{
-        // Coalgirls
-        category: 'English-translated Anime',
-        query: item.series_title.trim(),
-        user: 62260
-    },{
-        // Cthuko
-        category: 'English-translated Anime',
-        query: item.series_title.trim(),
-        user: 227226
-    },{
-        // Commie
-        category: 'English-translated Anime',
-        query: item.series_title.trim(),
-        user: 76430
     }], function(query , next){
         nyaa.search(query, function(err, data){
             if (err) {

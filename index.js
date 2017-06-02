@@ -20,7 +20,7 @@ var opt = require('node-getopt').create([
 
 
 var Transmission = require('transmission'),
-    http = require('http'),
+    http = require('https'),
     bencode = require('bencode'),
     search = require('./search.js'),
     async = require('async'),
@@ -233,21 +233,15 @@ function joinPath(partA, partB) {
 
 function doTorrent(url, transmission, options, callback)
 {
-    get(url, function(err, data){
-        if (err) {
-            console.log('Fatal: '+err.message);
-            process.exit(1);
-        }
-        var newTorrent = addTrackers(data);
-
-        transmission.addBase64(newTorrent.toString('base64'), options, function(){
+	console.log("Adding: " + url);
+        transmission.addUrl(url, options, function(err,res){
+            console.log(res);
             if (err) {
                 console.log('Fatal: '+err.message);
                 process.exit(1);
             }
             callback();
         })
-    });
 }
 
 function createScore(result)
